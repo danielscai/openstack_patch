@@ -173,9 +173,12 @@ class API(base.Base):
                             # discard rather than popping.
                             available_macs.discard(port['mac_address'])
                     network_id = port['network_id']
+                    #add by daniels cai
                     if not ports.has_key(network_id):
                         ports[network_id]=[]
-                        ports[network_id].append(port) 
+                    ports[network_id].append(port)
+                    #ports[network_id] = port
+                    #end daniels cai
                 elif fixed_ip and network_id:
                     fixed_ips[network_id] = fixed_ip
                 if network_id:
@@ -237,32 +240,38 @@ class API(base.Base):
             port_req_body = {'port': {'device_id': instance['uuid'],
                                       'device_owner': zone}}
             try:
-                port = ports.get(network_id)
-                if port:
-                    quantum.update_port(port['id'], port_req_body)
-                    touched_port_ids.append(port['id'])
-                else:
-                    fixed_ip = fixed_ips.get(network_id)
-                    if fixed_ip:
-                        port_req_body['port']['fixed_ips'] = [{'ip_address':
-                                                               fixed_ip}]
-                    port_req_body['port']['network_id'] = network_id
-                    port_req_body['port']['admin_state_up'] = True
-                    port_req_body['port']['tenant_id'] = instance['project_id']
-                    if security_group_ids:
-                        port_req_body['port']['security_groups'] = (
-                            security_group_ids)
-                    if available_macs is not None:
-                        if not available_macs:
-                            raise exception.PortNotFree(
-                                instance=instance['display_name'])
-                        mac_address = available_macs.pop()
-                        port_req_body['port']['mac_address'] = mac_address
+                #add by daniels cai
+                #port = ports.get(network_id)
+                port_list = ports.get(network_id)
+                if type(port_list)!=list:
+                    port_list=[port_list]
+                for port in port_list:
+                    if port:
+                        quantum.update_port(port['id'], port_req_body)
+                        touched_port_ids.append(port['id'])
+                    else:
+                        fixed_ip = fixed_ips.get(network_id)
+                        if fixed_ip:
+                            port_req_body['port']['fixed_ips'] = [{'ip_address':
+                                                                   fixed_ip}]
+                        port_req_body['port']['network_id'] = network_id
+                        port_req_body['port']['admin_state_up'] = True
+                        port_req_body['port']['tenant_id'] = instance['project_id']
+                        if security_group_ids:
+                            port_req_body['port']['security_groups'] = (
+                                security_group_ids)
+                        if available_macs is not None:
+                            if not available_macs:
+                                raise exception.PortNotFree(
+                                    instance=instance['display_name'])
+                            mac_address = available_macs.pop()
+                            port_req_body['port']['mac_address'] = mac_address
 
-                    self._populate_quantum_extension_values(instance,
-                                                            port_req_body)
-                    created_port_ids.append(
-                        quantum.create_port(port_req_body)['port']['id'])
+                        self._populate_quantum_extension_values(instance,
+                                                                port_req_body)
+                        created_port_ids.append(
+                            quantum.create_port(port_req_body)['port']['id'])
+                #end daniels cai
             except Exception:
                 with excutils.save_and_reraise_exception():
                     for port_id in touched_port_ids:
@@ -453,7 +462,10 @@ class API(base.Base):
                 raise exception.PortInUse(port_id=port_id)
             net_id = port['network_id']
             if net_id in net_ids:
-                raise exception.NetworkDuplicated(network_id=net_id)
+                #add by daniels cai
+                continue
+                #raise exception.NetworkDuplicated(network_id=net_id)
+                #end daniels cai
             net_ids.append(net_id)
 
         nets = self._get_available_networks(context, context.project_id,
